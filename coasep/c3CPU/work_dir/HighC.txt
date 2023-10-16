@@ -1,0 +1,10 @@
+#data
+int a1 = 1;
+int a2 = 3;
+int b1 =    4;
+#code
+a1=a1+ a2;
+a1=a1+b1;
+
+#output
+CPU_printf(a1);
