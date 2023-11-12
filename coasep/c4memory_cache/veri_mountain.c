@@ -5,14 +5,13 @@
 #include <stdio.h>
 #include <windows.h>
 
-
-#define MINBYTES (1 << 14)  /* First working set size */
-#define MAXBYTES (1 << 29)  /* Last working set size,128M */
-#define MAXSTRIDE 15        /* Stride x8 bytes */
-#define MAXELEMS MAXBYTES/sizeof(long)
+#define MINBYTES (1 << 14) /* First working set size */
+#define MAXBYTES (1 << 29) /* Last working set size,128M */
+#define MAXSTRIDE 15       /* Stride x8 bytes */
+#define MAXELEMS MAXBYTES / sizeof(long)
 
 /* $begin mountainfuns */
-long data[MAXELEMS];      /* The global array we'll be traversing */
+long data[MAXELEMS]; /* The global array we'll be traversing */
 
 /* $end mountainfuns */
 /* $end mountainmain */
@@ -20,42 +19,65 @@ void init_data(long *data, int n);
 int test(int elems, int stride);
 double run(int size, int stride);
 
+void create_csv(const char *filename, const char *title, int max_stride, int max_size)
+{
+    FILE *file = fopen(filename, "w");
 
+    if (file == NULL)
+    {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Memory mountain (GB/sec)\n");
+    printf(" ,");
+
+    fprintf(file, "%s\n", title);
+    fprintf(file, ",");
+    for (int stride = 1; stride <= max_stride; stride++)
+    {
+        fprintf(file, "s%d,", stride);
+        printf("s%d,", stride);
+    }
+    fprintf(file, "\n");
+    printf("\n");
+
+    for (int size = max_size; size >= MINBYTES; size >>= 1)
+    {
+        if (size > (1 << 20))
+        {
+            fprintf(file, "%dm,", size / (1 << 20));
+            printf("%dm,", size / (1 << 20));
+        }
+        else
+        {
+            fprintf(file, "%dk,", size / 1024);
+            printf("%dk,", size / 1024);
+        }
+
+        for (int stride = 1; stride <= max_stride; stride++)
+        {
+            float result = run(size, stride);
+            fprintf(file, "%.2f,", result);
+            printf("%.2f,", result); // Print to console for verification
+        }
+        fprintf(file, "\n");
+        printf("\n"); // Print newline to console for verification
+    }
+
+    fclose(file);
+}
 
 /* $begin mountainmain */
 int main()
 {
-    int size;        /* Working set size (in bytes) */
-    int stride;      /* Stride (in array elements) */
+    int size;   /* Working set size (in bytes) */
+    int stride; /* Stride (in array elements) */
 
     init_data(data, MAXELEMS); /* Initialize each element in data */
     /* $end mountainmain */
     /* Not shown in the text */
-    printf("Memory mountain (GB/sec)\n");
-
-    printf(" ,");
-    for (stride = 1; stride <= MAXSTRIDE; stride++)
-        printf("s%d,", stride);
-    printf("\n");
-
-    /* $begin mountainmain */
-    for (size = MAXBYTES; size >= MINBYTES; size >>= 1)
-    {
-        /* $end mountainmain */
-        /* Not shown in the text */
-        if (size > (1 << 20))
-            printf("%dm,", size / (1 << 20));
-        else
-            printf("%dk,", size / 1024);
-
-        /* $begin mountainmain */
-        for (stride = 1; stride <= MAXSTRIDE; stride++)
-        {
-            printf("%.2f,", run(size, stride));
-
-        }
-        printf("\n");
-    }
+    create_csv("veri_mountain.csv", "Memory mountain (GB/sec)", MAXSTRIDE, MAXBYTES);
     exit(0);
 }
 /* $end mountainmain */
@@ -76,30 +98,30 @@ double QPC_time(test_funct f, int param1, int param2)
     LARGE_INTEGER start, stop;
     double exe_time;
 
-    //²éÑ¯cpuÖ÷Æµ
+    // æŸ¥è¯¢cpuä¸»é¢‘
     QueryPerformanceFrequency(&freq);
 
-    //¼ÆËãÊ±¼äÑÓ³Ù
+    // è®¡ç®—æ—¶é—´å»¶è¿Ÿ
     QueryPerformanceCounter(&start);
 
-    f(param1,param2);
+    f(param1, param2);
     QueryPerformanceCounter(&stop);
-    exe_time =  1e3*(stop.QuadPart-start.QuadPart)/freq.QuadPart;
+    exe_time = 1e3 * (stop.QuadPart - start.QuadPart) / freq.QuadPart;
     return exe_time;
 }
 
 /* $begin mountainfuns */
-/* test - ¶ÔÇ°¡°elems"¸öÊý¾ÝÒÔ²½³¤stride½øÐÐÑ­»·,
- *        Ê¹ÓÃ 4x4 Ñ­»·Õ¹¿ª.
+/* test - å¯¹å‰â€œelems"ä¸ªæ•°æ®ä»¥æ­¥é•¿strideè¿›è¡Œå¾ªçŽ¯,
+ *        ä½¿ç”¨ 4x4 å¾ªçŽ¯å±•å¼€.
  */
 int test(int elems, int stride)
 {
-    long i,s, sx2 = stride*2, sx3 = stride*3, sx4 = stride*4;
+    long i, s, sx2 = stride * 2, sx3 = stride * 3, sx4 = stride * 4;
     long acc0, acc1, acc2, acc3;
     long length;
     long limit;
-    /*Ôö¼ÓÑ­»·´ÎÊý£¬·ÀÖ¹³öÏÖÖ´ÐÐÊ±¼äÌ«¶Ì³öÏÖµÄ³ýÁã´íÎó*/
-    for(s=0; s<stride; s++)
+    /*å¢žåŠ å¾ªçŽ¯æ¬¡æ•°ï¼Œé˜²æ­¢å‡ºçŽ°æ‰§è¡Œæ—¶é—´å¤ªçŸ­å‡ºçŽ°çš„é™¤é›¶é”™è¯¯*/
+    for (s = 0; s < stride; s++)
     {
         acc0 = 0, acc1 = 0, acc2 = 0, acc3 = 0;
         length = elems;
@@ -108,9 +130,9 @@ int test(int elems, int stride)
         for (i = 0; i < limit; i += sx4)
         {
             acc0 = acc0 + data[i];
-            acc1 = acc1 + data[i+stride];
-            acc2 = acc2 + data[i+sx2];
-            acc3 = acc3 + data[i+sx3];
+            acc1 = acc1 + data[i + stride];
+            acc2 = acc2 + data[i + sx2];
+            acc3 = acc3 + data[i + sx3];
         }
 
         /* Finish any remaining elements */
@@ -122,19 +144,17 @@ int test(int elems, int stride)
 
     return ((acc0 + acc1) + (acc2 + acc3));
 }
-/* run - Ö´ÐÐ test(elems, stride) ²¢·µ»Ø¶Á´ø¿í (GB/s).
- *       "size"µ¥Î»Îª×Ö½Ú, "stride" ±íÊ¾²½³¤¡£
- *       QPC_time·µ»ØµÄÊÇºÁÃë.
+/* run - æ‰§è¡Œ test(elems, stride) å¹¶è¿”å›žè¯»å¸¦å®½ (GB/s).
+ *       "size"å•ä½ä¸ºå­—èŠ‚, "stride" è¡¨ç¤ºæ­¥é•¿ã€‚
+ *       QPC_timeè¿”å›žçš„æ˜¯æ¯«ç§’.
  */
 double run(int size, int stride)
 {
     double exe_time;
-    int elems = size / sizeof(double); //todo: why double
+    int elems = size / sizeof(double); // todo: why double
 
-    test(elems, stride);                    /* Warm up the cache */       //line:mem:warmup
-    exe_time = QPC_time(test, elems, stride);  /* Call test(elems,stride) */ //line:mem:fcyc
-    return (size) / (exe_time /1000.0)/1024/1024/1024; /* Convert cycles to MB/s */  //line:mem:bwcompute
+    test(elems, stride); /* Warm up the cache */                                           // line:mem:warmup
+    exe_time = QPC_time(test, elems, stride); /* Call test(elems,stride) */                // line:mem:fcyc
+    return (size) / (exe_time / 1000.0) / 1024 / 1024 / 1024; /* Convert cycles to MB/s */ // line:mem:bwcompute
 }
 /* $end mountainfuns */
-
-
